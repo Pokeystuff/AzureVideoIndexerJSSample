@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="English">
+    <!-- This is sample code in Javascript used to demonstrate basic Azure Video Indexer API interactions.
+        > Javascript is used here due to it's relative accessibility compared to other languages - nearly every device has js built in. Just get VSCode and play away.
+        > Azure Video Indexer Overview: https://docs.microsoft.com/en-us/azure/azure-video-indexer/video-indexer-overview 
+        > Azure Video Indexer Portal: https://www.videoindexer.ai/
+        > Azure Video Indexer APIs: https://api-portal.videoindexer.ai/
+        > This code is using classic mode not Azure Resource Manager (ARM) authentication.
+        > Code here is illustrative and not showcasing best practise for any user experience, security or coding methodology.
+          Please use this as a learning resource. All care and no responsibility taken for undesired outcomes if reusing this code.
+          Remember copy and paste is a powerful ally yet can also be a formidable foe. Use with caution!
+        >>Enjoy!
+    -->
+<head>
+    <title>Video Indexer API Sample - Dean Corcoran</title>
+    <style>
+        .deanstyle{
+            margin: 4pt;
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+        .deanemph{
+            font-size: larger;
+            color:darkblue;
+            margin: 6pt;
+        }
+        .deanheader{
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+            color: #0078D4;
+        }
+        .deantable{
+            float: left;
+            width: 30%;
+            border: 1px solid #000000;
+            margin: 5px;
+            padding: 10px;
+            background-color: #d1e9ff;
+        }
+        .smaller{
+            padding-top: 4pt;
+            font-size: smaller;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Here are the HTML elements used to create a basic UI -->
+<h1 class="deanheader"><span>
+<svg height="70px" viewBox="0 0 102 102" focusable="false"><path d="M14 8.2c0-2.3 2.5-3.7 4.5-2.6l75 42.8c2 1.2 2 4.1 0 5.2l-75 42.8c-2 1.1-4.5-.3-4.5-2.6V8.2zm15 20.6v44.3L67.8 51 29 28.8z" fill-rule="evenodd" clip-rule="evenodd" fill="#047AD5"></path><path d="M14 61.5v-21h15v21H14z" fill="#6AE7FF"></path><path d="M64.8 70 46.6 80.4l-7.4-13L57.4 57l7.4 13z" fill="#6AE7FF"></path><path d="M46.6 21.6 64.8 32l-7.4 13-18.3-10.4 7.5-13z" fill="#6AE7FF"></path></svg>
+</span><span>
+Azure Video Indexer</h1></span>
+<div class="deanstyle"> <!-- note that some elements are disabled and waiting to be enabled once Video Indexer API data is retrieved -->
+<div class="deanstyle deanemph">Azure Video Indexer - Classic Auth Information</div>
+<div class="deanstyle">Account ID: <input type="text" name="AccountID" id="accountID" maxlength="36" size="36" onchange="accIDupdated()" /></div>
+<div class="deanstyle">Subscription Key: <input type="password" name="Subscription Key" id="subscriptionKey" maxlength="32" size="32" onchange="SubKeyupdated()"/></div>
+<div class="deanstyle">Location: <select id="selectorLocation" title="" onchange="sdLocUpdated()"><option value="trial">trial</option><option value="australiaeast">australiaeast</option><option value="eastus">eastus</option><option value="westus2">westus2</option><option value="eastasia">eastasia</option><option value="northeurope">northeurope</option><option value="westeurope">westeurope</option><option value="southeastasia">southeastasia</option><option value="eastus2">eastus2</option><option value="southcentralus">southcentralus</option><option value="japaneast">japaneast</option><option value="uksouth">uksouth</option><option value="switzerlandnorth">switzerlandnorth</option><option value="switzerlandwest">switzerlandwest</option><option value="centralindia">centralindia</option><option value="canadacentral">canadacentral</option><option value="westus">westus</option><option value="northcentralus">northcentralus</option><option value="francecentral">francecentral</option><option value="centralus">centralus</option><option value="koreacentral">koreacentral</option><option value="brazilsouth">brazilsouth</option><option value="japanwest">japanwest</option><option value="westcentralus">westcentralus</option></select>
+</div>
+<div class="deanstyle"><button title="Get Token button" id="buttonGetToken" onclick="getAVIaccessToken()" disabled="true">Get Token</button></div>
+<div id="Keyresult"></div>
+</div>
+<div id="VideoList" >
+    <div class="deanstyle deanemph">Video List</div>
+    <div class="deanstyle"><button title="List Videos button" id="buttonListVideos" onclick="ShowVideosButton()" disabled="true">List Videos</button></div>
+    <div id="VideoListTable" class="deanstyle" style="width:90%; overflow: hidden;"></div> <!-- This List is dynamically created using js once we have Video list back from Azure Video Indexer API. -->
+</div>
+
+<div class="deanstyle">Transcript Format: <select class="form-control" aria-label="Parameter value" id="capsformat"><option value="Vtt">Vtt</option><option value="Ttml">Ttml</option><option value="Srt">Srt</option><option value="Txt">Txt</option><option value="Csv">Csv</option></select>
+ Language: <select class="form-control" aria-label="Parameter value" id="capslanguage"><option value="English" selected>English</option><option value="Spanish">Spanish</option><option value="Russian">Russian</option><option value="Japanese">Japanese</option><option value="German">German</option><option value="French">French</option><option value="Portuguese">Portuguese</option><option value="Italian">Italian</option><option value="Chinese">Chinese</option><option value="Filipino">Filipino</option><option value="Arabic">Arabic</option><option value="Hindi">Hindi</option><option value="sr-Cyrl-RS">sr-Cyrl-RS</option><option value="sr-Latn-RS">sr-Latn-RS</option><option value="bs-Latn">bs-Latn</option><option value="zh-Hans">zh-Hans</option><option value="zh-Hant">zh-Hant</option><option value="fil-PH">fil-PH</option><option value="en-GB">en-GB</option><option value="en-FJ">en-FJ</option><option value="en-AU">en-AU</option><option value="en-WS">en-WS</option><option value="en-US">en-US</option><option value="el-GR">el-GR</option><option value="es-ES">es-ES</option><option value="es-MX">es-MX</option><option value="et-EE">et-EE</option><option value="fa-IR">fa-IR</option><option value="fi-FI">fi-FI</option><option value="fr-CA">fr-CA</option><option value="fr-FR">fr-FR</option><option value="fr-HT">fr-HT</option><option value="af-ZA">af-ZA</option><option value="ar-SA">ar-SA</option><option value="ar-SY">ar-SY</option><option value="ar-PS">ar-PS</option><option value="ar-QA">ar-QA</option><option value="ar-EG">ar-EG</option><option value="ar-BH">ar-BH</option><option value="ar-OM">ar-OM</option><option value="ar-LB">ar-LB</option><option value="ar-AE">ar-AE</option><option value="ar-KW">ar-KW</option><option value="ar-JO">ar-JO</option><option value="ar-IQ">ar-IQ</option><option value="ar-IL">ar-IL</option><option value="da-DK">da-DK</option><option value="de-DE">de-DE</option><option value="bg-BG">bg-BG</option><option value="bn-BD">bn-BD</option><option value="mg-MG">mg-MG</option><option value="ms-MY">ms-MY</option><option value="mt-MT">mt-MT</option><option value="ca-ES">ca-ES</option><option value="cs-CZ">cs-CZ</option><option value="nl-NL">nl-NL</option><option value="nb-NO">nb-NO</option><option value="id-ID">id-ID</option><option value="it-IT">it-IT</option><option value="lt-LT">lt-LT</option><option value="lv-LV">lv-LV</option><option value="ja-JP">ja-JP</option><option value="ur-PK">ur-PK</option><option value="uk-UA">uk-UA</option><option value="hi-IN">hi-IN</option><option value="he-IL">he-IL</option><option value="hu-HU">hu-HU</option><option value="hr-HR">hr-HR</option><option value="ko-KR">ko-KR</option><option value="vi-VN">vi-VN</option><option value="tr-TR">tr-TR</option><option value="ta-IN">ta-IN</option><option value="th-TH">th-TH</option><option value="to-TO">to-TO</option><option value="ru-RU">ru-RU</option><option value="ro-RO">ro-RO</option><option value="pt-BR">pt-BR</option><option value="pt-PT">pt-PT</option><option value="pl-PL">pl-PL</option><option value="sv-SE">sv-SE</option><option value="sw-KE">sw-KE</option><option value="sl-SI">sl-SI</option><option value="sk-SK">sk-SK</option><option value="zh-HK">zh-HK</option></select> </div>
+<div id="CapsText">
+
+</div>
+<!-- Start of Javascript code below -->
+<script type="text/javascript">
+    // Create some Global variables for storing connection information.
+    var AccountID="", SubscriptionKey="", AccessToken="", dsLocation="trial", VideoList=null;
+
+    // Note supporting functions toward bottom of code.
+
+// Video Indexer API Call Functionss.
+
+    // Get Account Access Token
+    function getAVIaccessToken_API(accID,subKey,location){
+        if(accID && subKey && AccessToken==""){
+            fetch(`https://api.videoindexer.ai/Auth/${location}/Accounts/${accID}/AccessToken?allowEdit=true`, { // Make REST call to API
+                method: 'GET',
+                headers: {                                  // Request headers for API
+                    'Cache-Control': 'no-cache',
+                    'Ocp-Apim-Subscription-Key': subKey,}   // Provide Subscription Key (now in a variable) from UI field.
+            })
+            .then(response => {
+                console.log(response.status);
+                let responsepromise = response.text().then((data) => {
+                    AccessToken = data.substring(1,data.length-1);                              // use substring to remove the leading and trailing quotation marks {""}.
+                    console.log("Access Token Received:","..."+AccessToken.slice(10,30)+"..."); // log to response to console in truncated form.
+                    document.getElementById("buttonGetToken").disabled = true;                  // UI: Disable Connect Button.
+                    getVideoList_API(AccountID,dsLocation,AccessToken);                         // Now use token to get a list of videos
+                });
+            })
+            .catch(err => console.error(err));
+        }
+    }
+    /* Example JSON Response.
+     Note: intentionally broken data here ;) 
+    content-type: application/json; charset=utf-8
+    Data: "eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0LXXXXXRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50SWXXXXX4NDEwYmNmNi02NDQ2LTRmNTMtYThhZi1jYmU4Zjg2ZDczXXXXXCJQZXJtaXNzaW9uIjoiQ29udHJpYnV0b3IiLCJFeHRlcm5hbFVzZXJJZCI6IkM3MTNCRjlFRjIzQTQ0MEDEBUGTHISENUVBN0YwMjhCIiwiVXNlclR5cTESLAJNaWNyb3NvZnRDb3JwQWFkIiwiSXNzdWVyTG9jYXRpb24iOiJhdXN0cmFsaWFlYXN0IiwibmJmIjoxNjUyNTk1MTI5LCJleHAiOjE2NTI1OTkwMjksImlzcyI6Imh0dHXXXXXXBUGSXINXCODEaW5kZXhlci5haS8iLCJhdWQiOiJodHRwczovL2FwaFINDSME5ON2LINKEDINaWRlbn0.I7V2zfBYEk7kzNh1VgmZJLYvaiH1DD5LNeNsPpXEHYI"
+    */      
+
+
+
+    // List Videos using Access Token Returned
+    
+    function getVideoList_API(accID,location,aToken){
+        fetch(`https://api.videoindexer.ai/${location}/Accounts/${accID}/Videos?pageSize=25&skip=0&accessToken=${aToken}`, {
+            method: 'GET',
+            // Request headers
+            headers: {
+                'Cache-Control': 'no-cache',}
+        })
+        .then(response => {
+            console.log(response.status);
+            let responsepromise = response.text().then((data) => {
+                    // console.log(data); 
+                    VideoList = JSON.parse(data);                                   // store video list data into a variable for reuse.
+                    document.getElementById("buttonListVideos").disabled = false;   // Enable button used to display returned videos now we have them.
+            });
+        })
+        .catch(err => console.error(err));
+    }
+    /* Example JSON Results from REST call
+    {
+        "results": [{
+            "accountId": "8easter6-6446-4f53-a8af-egg8f86d73ad",
+            "id": "82ae5c9014",
+            "partition": null,
+            "externalId": null,
+            "metadata": null,
+            "name": "1982 Wombles of Wimbledon.mp4",
+            "description": null,
+            "created": "2022-05-15T01:45:35.621+00:00",
+            "lastModified": "2022-05-15T01:52:41.813+00:00",
+            "lastIndexed": "2022-05-15T01:45:40.976+00:00",
+            "privacyMode": "Private",
+            "userName": "Vi Appadmin",
+            "isOwned": true,
+            "isBase": true,
+            "hasSourceVideoFile": true,
+            "state": "Processed",
+            "moderationState": "OK",
+            "reviewState": "None",
+            "processingProgress": "100%",
+            "durationInSeconds": 366,
+            "thumbnailVideoId": "82ae5c9014",
+            "thumbnailId": "9023b11b-2c8a-4bf7-81ff-6007f136a6f2",
+            "searchMatches": [],
+            "indexingPreset": "Default",
+            "streamingPreset": "Default",
+            "sourceLanguage": "en-US",
+            "sourceLanguages": ["en-US"],
+            "personModelId": "00000000-0000-0000-0000-000000000000"
+        }],
+        "nextPage": {
+            "pageSize": 25,
+            "skip": 0,
+            "done": true
+        }
+    }
+    */
+
+    // Video Captions / Transcript
+
+    function getCaptions_API(accID,location,aToken,IndexID){
+        capFormat = document.getElementById("capsformat").value;
+        capLang = document.getElementById("capslanguage").value;
+        fetch(`https://api.videoindexer.ai/${location}/Accounts/${accID}/Videos/${IndexID}/Captions?format=${capFormat}&language=${capLang}&includeAudioEffects=true&includeSpeakers=true&accessToken=${aToken}`, {
+            method: 'GET',
+            // Request headers
+            headers: {
+                'Cache-Control': 'no-cache',}
+        })
+        .then(response => {
+            console.log(response.status);
+            let responsepromise = response.text().then((data) => {
+                    document.getElementById("CapsText").innerText = data; // set text inside "CapsText" element to the captions text returned from API
+            });
+        })
+        .catch(err => console.error(err));
+    }
+/* Captions Response Example
+
+    content-type: text/plain
+
+    WEBVTT
+
+    NOTE
+    language:en-AU
+
+    NOTE Confidence: 0.7872641682624817
+
+    00:00:01.220 --> 00:00:03.816
+    SPEAKER 1: It's lights out and away we go. Bottas gets away.
+
+    NOTE Confidence: 0.7872641682624817
+
+    00:00:03.869 --> 00:00:06.943
+    SPEAKER 1: Well, he's alongside Lewis Hamilton and he's making a good
+
+    NOTE Confidence: 0.7872641682624817
+
+    00:00:06.996 --> 00:00:10.230
+    SPEAKER 1: progress and they're back his dad Daniel Ricciardo losing his
+    */
+
+//  Get Video Artifact Download Url
+
+    //<select class="form-control" aria-label="Parameter value" title=""><option value="Ocr">Ocr</option><option value="Faces">Faces</option><option value="FacesThumbnails">FacesThumbnails</option><option value="VisualContentModeration">VisualContentModeration</option><option value="KeyframesThumbnails">KeyframesThumbnails</option><option value="LanguageDetection">LanguageDetection</option><option value="MultiLanguageDetection">MultiLanguageDetection</option><option value="Metadata">Metadata</option><option value="Emotions">Emotions</option><option value="TextualContentModeration">TextualContentModeration</option><option value="AudioEffects">AudioEffects</option><option value="ObservedPeople">ObservedPeople</option><option value="Labels">Labels</option></select>
+    function getArtifacts_API(){
+        fetch('https://api.videoindexer.ai/australiaeast/Accounts/8410bcf6-6446-4f53-a8af-cbe8f86d73ad/Videos/82ae5c9014/ArtifactUrl?type=Ocr&accessToken=eyJhbGciOiJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzA0L3htbGRzaWctbW9yZSNobWFjLXNoYTI1NiIsInR5cCI6IkpXVCJ9.eyJBY2NvdW50SWQiOiI4NDEwYmNmNi02NDQ2LTRmNTMtYThhZi1jYmU4Zjg2ZDczYWQiLCJQZXJtaXNzaW9uIjoiQ29udHJpYnV0b3IiLCJFeHRlcm5hbFVzZXJJZCI6IkM3MTNCRjlFRjIzQTQ0MEU5NDRCNDZENUVBN0YwMjhCIiwiVXNlclR5cGUiOiJNaWNyb3NvZnRDb3JwQWFkIiwiSXNzdWVyTG9jYXRpb24iOiJhdXN0cmFsaWFlYXN0IiwibmJmIjoxNjUyNTk1MTI5LCJleHAiOjE2NTI1OTkwMjksImlzcyI6Imh0dHBzOi8vYXBpLnZpZGVvaW5kZXhlci5haS8iLCJhdWQiOiJodHRwczovL2FwaS52aWRlb2luZGV4ZXIuYWkvIn0.I7V2zfQ4Bk7kzNh1VgmZJLYvaiH1DD5LNeNsPpXEHYI', {
+                method: 'GET',
+                // Request headers
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Ocp-Apim-Subscription-Key': 'db982bc05d474e238f668f397bb9b8fb',}
+            })
+            .then(response => {
+                console.log(response.status);
+                console.log(response.text());
+            })
+            .catch(err => console.error(err));
+    }
+    /* Example REST JSON Response
+
+    HTTP/1.1 200 OK
+
+    content-type: application/json; charset=utf-8
+
+    "https://viprodaestorage.blob.core.windows.net/account-8410bcf6-6446-4f53-a8af-cbe8f86d73ad/videos/82ae5c9014/artifacts/ocr.computervision.json?sv=2018-03-28&sr=b&sig=M%2BxoY5WNkbOATcPX6dsGLKwsfIdLIEFgAmq%2F8mWPD7s%3D&se=2022-05-15T18%3A58%3A22Z&sp=r"
+
+    This will be a json array with bounding boxes.
+    eg: {"Fps":50.0,"Results":[{"Ocr":{"apiVersion":"internal-latest","modelId":"prebuilt-read-2022-04-30","stringIndexType":"textElements","content":"strcilia\nMEL\nMELBOURNE\nMEL\nAustralid\nROLEX\nLL\nCREN\nREN\nSociirc\nROLEN\nASTOR\nR","pages":[{"pageNumber":1,"angle":0.0,"width":1920.0,"height":1080.0,"unit":"pixel","words":[{"content":"strcilia","boundingBox":[0.0,7.0,220.0,4.0,221.0,68.0,0.0,71.0],"confidence":0.349,"span":{"offset":0,"length":8}},{"content":"MEL","boundingBox":[294.0,11.0,351.0,10.0,351.0,38.0,294.0,39.0],"confidence":0.994,"span":{"offset":9,"length":3}},{"content":"MELBOURNE","boundingBox":[461.0,6.0,917.0,5.0,920.0,66.0,461.0,65.0],"confidence":0.954,"span":{"offset":13,"length":9}},{"content":"MEL","boundingBox":[1046.0,8.0,1097.0,8.0,1097.0, etc. etc.
+    */
+
+
+// ========= Supporting Functions =========
+
+    function SubKeyupdated(){
+        SubscriptionKey = document.getElementById("subscriptionKey").value.trim();  // get the current value from the input field
+        if(SubscriptionKey.length == 32 && AccountID.length == 36){                 //  do some simple content validation to enable or disable button.
+            document.getElementById("buttonGetToken").disabled = false;
+        } else {
+            document.getElementById("buttonGetToken").disabled = true;
+        }
+    }
+    function accIDupdated(){
+        AccountID = document.getElementById("accountID").value.trim();      // get the current value from the input field
+        if(SubscriptionKey.length == 32 && AccountID.length == 36){         //  do some simple content validation to enable or disable button.
+            document.getElementById("buttonGetToken").disabled = false;
+        } else {
+            document.getElementById("buttonGetToken").disabled = true;
+        }
+    }
+    function sdLocUpdated(){                                                // Update Location Variable if the selector changes.
+        dsLocation = document.getElementById("selectorLocation").value;
+    }
+
+    function getAVIaccessToken(){                                           // Calls This once button pressed.
+        getAVIaccessToken_API(AccountID, SubscriptionKey, dsLocation);
+    }
+
+    function ShowVideosButton(){                                            // Once we have videos in variable this will call the function to show on screen.
+        ShowVideos(VideoList);
+    }
+
+
+    function ShowVideos(VideoListJSON){                                     // Dynamically creates table of Videos returned.
+        let VideoTable = document.getElementById("VideoListTable");
+        VideoTable.innerHTML = "";
+        VideoListJSON.results.forEach(VideoEntry => {
+            VideoTable.innerHTML+="<div class=\"deantable\" onclick=\"selectVideo('"+VideoEntry.id+"')\" onmouseover='Glow(this)' onmouseout='unGlow(this)'><div>"+VideoEntry.name+"</div><div class='smaller'><div>"+secondsToHms(VideoEntry.durationInSeconds)+"</div><div>"+(new Date(VideoEntry.created))+"</div></div></div>";
+        });
+    }
+ 
+    function selectVideo(VidID){                                            // Called when video cell selected.
+        console.log("Selected:",VidID);
+        getCaptions_API(AccountID,dsLocation,AccessToken,VidID);            // Requests captions for selected cell.
+        
+    }
+
+    function Glow(element){                                                 // used to change colour of table cell when hovering mouse.
+        element.style.backgroundColor="lightskyblue";
+    }
+
+    function unGlow(element){                                               // used to change colour of table cell back to normal when un-hovering mouse.
+        element.style.backgroundColor="#d1e9ff";
+    }
+
+    function secondsToHms(d) {                                              // used to convert seconds to friendly hours, minutes and seconds text.
+        d = Number(d);
+        var h = Math.floor(d / 3600);
+        var m = Math.floor(d % 3600 / 60);
+        var s = Math.floor(d % 3600 % 60);
+
+        var hDisplay = h > 0 ? h + (h == 1 ? " hour, " : " hours, ") : "";
+        var mDisplay = m > 0 ? m + (m == 1 ? " minute, " : " minutes, ") : "";
+        var sDisplay = s > 0 ? s + (s == 1 ? " second" : " seconds") : "";
+        return hDisplay + mDisplay + sDisplay; 
+    }
+
+
+
+</script>
+
+
+
+</body>
+</html>
