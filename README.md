@@ -7,6 +7,7 @@ This JS code is used as a basic illustration of how to interact with Azure Video
 - Getting an access token using classic authentication mode
 - Retrieving list of videos and video properties
 - Retrieving captions generated from indexed videos
+- JS used can form the basis for NodeJS or Client Side API interaction when security best practises taken (not covered in this example).
 
 This should help with initial learning for the Azure Video Indexer API interactions. Copy and paste at your own risk 😉
 
